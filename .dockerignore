@@ -1,0 +1,5 @@
+.git
+.gitignore
+pkg
+src
+transaction.log
