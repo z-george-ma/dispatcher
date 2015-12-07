@@ -1,8 +1,10 @@
 FROM scratch
 
-ADD /bin/dispatcher /app/
+ADD dispatcher /app/
 ADD config.yml /app/
 
-WORKDIR /app
+VOLUME /var/dispatcher/
 EXPOSE 80
+
+WORKDIR /app
 ENTRYPOINT ["/app/dispatcher"]

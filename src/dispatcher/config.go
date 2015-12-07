@@ -17,7 +17,7 @@ type Config struct {
 
 func readConfig() Config {
 	config := Config{}
-	f, err := os.OpenFile("config.yml", os.O_RDONLY, 500)
+	f, err := os.OpenFile("config.yml", os.O_RDONLY, 400)
 	if os.IsNotExist(err) {
 		log.Fatal("config.yml not found")
 		return config

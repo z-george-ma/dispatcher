@@ -32,9 +32,13 @@ func main() {
 	
 	transactionLog, err := NewTransactionLog(config.Log)
 	
+	if err != nil {
+		log.Fatal(err)
+	}
+	
 	pool := NewPool(config.Worker)
 	var scheduler *Scheduler
-	scheduler = NewScheduler(pool, func (data MessageRecord) bool {
+	scheduler = NewScheduler(pool, func (data *MessageRecord) bool {
 		if err := client(data); err == nil {
 			if err := transactionLog.WriteAck(data.UUID); err != nil {
 				log.Println("Failed to write to transaction log", err)
@@ -53,7 +57,7 @@ func main() {
 		}
 	})
 	
-	process := func (message MessageRecord) error {
+	process := func (message *MessageRecord) error {
 		if err = transactionLog.Write(message); err != nil {
 			return err
 		}

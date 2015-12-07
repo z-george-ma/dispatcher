@@ -10,6 +10,7 @@ import (
 
 type TransactionLog struct {
 	file *os.File
+	deadletter *os.File
 	metadata []messageMetaData
 	head uint
 	lock chan bool
@@ -34,7 +35,7 @@ func NewTransactionLog(file string) (*TransactionLog, error) {
 	return &tlog, nil
 }
 
-func (tlog *TransactionLog) Write(data MessageRecord) error {
+func (tlog *TransactionLog) Write(data *MessageRecord) error {
 	var buf bytes.Buffer
 	encode := gob.NewEncoder(&buf)
 	
@@ -92,7 +93,7 @@ func (tlog *TransactionLog) WriteAck(UUID string) error {
 	return err
 }
 
-func (tlog *TransactionLog) WriteRetry(data MessageRecord) error {
+func (tlog *TransactionLog) WriteRetry(data *MessageRecord) error {
 	<-tlog.lock
 	i, elm := indexOfMessageMetaData(tlog.metadata, data.UUID)
 	
@@ -120,7 +121,7 @@ func (tlog *TransactionLog) WriteRetry(data MessageRecord) error {
 	b1[8] = 3 // Type: 3 - Retry
 	binary.LittleEndian.PutUint32(b1[9:], uint32(len(b) + 8))
 	b = append(b, b1...)
-	
+
 	_, err := tlog.file.Write(b)
 	tlog.head++
 	tlog.lock <- true

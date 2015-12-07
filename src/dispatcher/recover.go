@@ -23,7 +23,7 @@ func indexOf(slice []int, pos int) int {
 	return -1
 }
 
-func recover(file string, process func(MessageRecord) error) error {
+func recover(file string, process func(*MessageRecord) error) error {
 	f, err := os.OpenFile(file, os.O_RDONLY, 500)
 	if os.IsNotExist(err) {
 		return nil
@@ -79,7 +79,7 @@ func recover(file string, process func(MessageRecord) error) error {
 				if err := decode.Decode(&data); err != nil {
 					log.Println("Failed to decode message", err)
 				} else {
-					if err = process(data); err != nil {
+					if err = process(&data); err != nil {
 						return err
 					}
 				}
@@ -141,13 +141,12 @@ func recover(file string, process func(MessageRecord) error) error {
 				decode := gob.NewDecoder(bytes.NewReader(b))
 				
 				if err := decode.Decode(&data); err != nil {
-					log.Println(msgLen, b, msgOffset, unAckedMsgOffset)
 					if unAckedMsgOffset < msgOffset {
 						maxReadMsgCount = msgReadCount + msgOffset
 					}
-										log.Fatal("Failed to decode message", err)
+					log.Fatal("Failed to decode message", err)
 				} else {
-					if err = process(data); err != nil {
+					if err = process(&data); err != nil {
 						return err
 					}
 					

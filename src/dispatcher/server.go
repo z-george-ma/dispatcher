@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-func server(url string, process func(MessageRecord) error) {
+func server(url string, process func(*MessageRecord) error) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
@@ -25,7 +25,7 @@ func server(url string, process func(MessageRecord) error) {
 			}
 			
 			
-			if err = process(message); err != nil {
+			if err = process(&message); err != nil {
 				http.Error(w, err.Error(), 500)
 				return
 			}

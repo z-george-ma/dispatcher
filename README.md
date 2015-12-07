@@ -80,9 +80,8 @@ Configuration for Dispatcher can be found in config.yml. Currently it accepts th
 
 ```
 $ export GOPATH=`pwd`
-$ go get dispatcher    # Install dependencies
 $ go test dispatcher   # Run tests
 $ go build dispatcher  # Build Dispatcher
-$ ./bin/dispatcher     # Start Dispatcher
+$ ./dispatcher         # Start Dispatcher
 ```
 
