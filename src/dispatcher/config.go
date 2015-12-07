@@ -2,48 +2,51 @@
 package main
 
 import (
-	"gopkg.in/yaml.v2"
-	"log"
-	"io/ioutil"
 	"os"
-	"io"
+	"strconv"
 )
 
 type Config struct {
-	Log string "log"
+	Log string
 	Listen string
 	Worker int
+	RetryLimit int
 }
 
-func readConfig() Config {
-	config := Config{}
-	f, err := os.OpenFile("config.yml", os.O_RDONLY, 400)
-	if os.IsNotExist(err) {
-		log.Fatal("config.yml not found")
-		return config
-	} else if err != nil {
-		log.Fatal(err)
-		return config
+func getEnvOrDefault(name string, defaultValue string) string {
+	value := os.Getenv(name)
+	
+	if value == "" {
+		value = defaultValue
 	}
-
-	defer f.Close()
-		
-	return readConfigFromReader(f)
+	
+	return value
 }
 
-func readConfigFromReader(f io.Reader) Config {
-	config := Config{}
-	data, err := ioutil.ReadAll(f)
+
+func getEnvOrDefaultInt(name string, defaultValue int) int {
+	strValue := os.Getenv(name)
+	
+	if strValue == "" {
+		return defaultValue
+	}
+	
+	intV, err := strconv.Atoi(strValue)
 	
 	if err != nil {
-		log.Fatal(err)
-		return config
+		return defaultValue
 	}
 	
-	
-	if err = yaml.Unmarshal(data, &config); err != nil {
-		log.Fatal(err)
+	return intV
+}
+
+
+
+func readConfig() Config {
+	return Config{
+		Log: getEnvOrDefault("TRANSACTION_LOG", "transaction.log"),
+		Listen: getEnvOrDefault("LISTEN", ":80"),
+		Worker: getEnvOrDefaultInt("WORKER", 10),
+		RetryLimit: getEnvOrDefaultInt("RETRY_LIMIT", 10),
 	}
-	
-	return config
 }

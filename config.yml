@@ -1,3 +1,0 @@
-listen: ":80"
-log: /var/dispatcher/transaction.log
-worker: 10

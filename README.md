@@ -69,11 +69,12 @@ $ curl http://localhost/ -XPOST -H "Content-Type: application/json" -d "
 -----
 ### Configuration
 
-Configuration for Dispatcher can be found in config.yml. Currently it accepts the following values:
+Dispatcher reads configuration from environment variables. Currently it supports: 
 
-- listen: the address that Dispatcher will listen to
-- log: transaction log file name
-- worker: number of workers for Dispatcher
+- TRANSACTION_LOG: the name of transaction log file. Default: transaction.log
+- LISTEN: the address that Dispatcher will listen to. Default: :80
+- WORKER: number of worker threads for Dispatcher. Default: 10
+- RETRYLIMIT: The number of retries before the message goes to dead letter queue. Default: 10
 
 -----
 ### Installation:

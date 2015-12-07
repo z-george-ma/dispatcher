@@ -127,3 +127,38 @@ func (tlog *TransactionLog) WriteRetry(data *MessageRecord) error {
 	tlog.lock <- true
 	return err
 }
+
+func (tlog *TransactionLog) WriteDeadLetter(data *MessageRecord) error {
+	<-tlog.lock
+	i, elm := indexOfMessageMetaData(tlog.metadata, data.UUID)
+	
+	if i < 0 {
+		tlog.lock <- true
+		return tlog.Write(data)
+	}
+	
+	var buf bytes.Buffer
+	encode := gob.NewEncoder(&buf)
+	
+	if err := encode.Encode(data); err != nil {
+		return err
+	}
+	
+	b := buf.Bytes()
+
+	tlog.metadata = append(tlog.metadata[:i], tlog.metadata[i+1:]...)
+	tlog.metadata = append(tlog.metadata, messageMetaData{data.UUID, tlog.head})
+	
+	b1 := make([]byte, 13)
+	binary.LittleEndian.PutUint32(b1[0:4], uint32(tlog.head - elm.transLogPos)) // messageOffset(4)
+	binary.LittleEndian.PutUint32(b1[4:8], uint32(tlog.head - tlog.metadata[0].transLogPos)) // unAckedMessageOffset(4)
+	
+	b1[8] = 3 // Type: 3 - Retry
+	binary.LittleEndian.PutUint32(b1[9:], uint32(len(b) + 8))
+	b = append(b, b1...)
+
+	_, err := tlog.file.Write(b)
+	tlog.head++
+	tlog.lock <- true
+	return err
+}
