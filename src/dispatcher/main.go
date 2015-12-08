@@ -30,7 +30,7 @@ func main() {
 		}
 	}
 	
-	transactionLog, err := NewTransactionLog(config.Log)
+	transactionLog, err := NewTransactionLog(config.Log, config.DeadLetter)
 	
 	if err != nil {
 		log.Fatal(err)
@@ -45,9 +45,17 @@ func main() {
 			}
 			return true
 		} else {
-			data.RetryCount++
-			data.RetryTimestamp = time.Now().Add(time.Duration(int64(time.Second) * int64(1 << uint(data.RetryCount)))).Unix()
 			data.Error = err.Error()
+			data.RetryCount++
+
+			if data.RetryCount >= config.RetryLimit {
+				if err := transactionLog.WriteDeadLetter(data); err != nil {
+					log.Println("Failed to write to transaction log", err)
+				}
+				return false
+			}
+			data.RetryTimestamp = time.Now().Add(time.Duration(int64(time.Second) * int64(1 << uint(data.RetryCount)))).Unix()
+			
 			if err := transactionLog.WriteRetry(data); err != nil {
 				log.Println("Failed to write to transaction log", err)
 			}
@@ -58,6 +66,10 @@ func main() {
 	})
 	
 	process := func (message *MessageRecord) error {
+		if message.Timeout == 0 {
+			message.Timeout = config.DefaultTimeout
+		}
+		
 		if err = transactionLog.Write(message); err != nil {
 			return err
 		}

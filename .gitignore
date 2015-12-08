@@ -1,5 +1,6 @@
 bin
 pkg
 transaction.log
+deadletter.log
 src/gopkg.in
 dispatcher

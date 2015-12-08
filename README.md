@@ -40,7 +40,7 @@ Consider use of queues if you need to
 
 - Guarantee the order of delivery
 - Pull messages rather than push
-- Get messages as fast as possible from the source
+- The consumer needs to control the rate of reading messages
 
 -----
 ### Scalability
@@ -75,6 +75,7 @@ Dispatcher reads configuration from environment variables. Currently it supports
 - LISTEN: the address that Dispatcher will listen to. Default: :80
 - WORKER: number of worker threads for Dispatcher. Default: 10
 - RETRYLIMIT: The number of retries before the message goes to dead letter queue. Default: 10
+- DEFAULT_TIMEOUT: Default timeout for HTTP call if the timeout is not set in the message. Default: 10000
 
 -----
 ### Installation:

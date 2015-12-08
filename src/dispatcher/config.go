@@ -8,9 +8,11 @@ import (
 
 type Config struct {
 	Log string
+	DeadLetter string
 	Listen string
 	Worker int
 	RetryLimit int
+	DefaultTimeout int
 }
 
 func getEnvOrDefault(name string, defaultValue string) string {
@@ -45,8 +47,10 @@ func getEnvOrDefaultInt(name string, defaultValue int) int {
 func readConfig() Config {
 	return Config{
 		Log: getEnvOrDefault("TRANSACTION_LOG", "transaction.log"),
+		DeadLetter: getEnvOrDefault("DEAD_LETTER", "deadletter.log"),
 		Listen: getEnvOrDefault("LISTEN", ":80"),
 		Worker: getEnvOrDefaultInt("WORKER", 10),
 		RetryLimit: getEnvOrDefaultInt("RETRY_LIMIT", 10),
+		DefaultTimeout: getEnvOrDefaultInt("DEFAULT_TIMEOUT", 10000),
 	}
 }

@@ -10,6 +10,7 @@ func TestReadConfigFromEnv(t *testing.T) {
 	os.Setenv("LISTEN", "def")
 	os.Setenv("WORKER", "111")
 	os.Setenv("RETRY_LIMIT", "222")
+	os.Setenv("DEFAULT_TIMEOUT", "333")
 	
 	config := readConfig()
 	
@@ -29,10 +30,15 @@ func TestReadConfigFromEnv(t *testing.T) {
 		t.Error("Read config error - unexpected worker value")
 	}
 	
+	if config.DefaultTimeout != 333 {
+		t.Error("Read config error - unexpected worker value")
+	}
+	
 	os.Unsetenv("TRANSACTION_LOG")
 	os.Unsetenv("LISTEN")
 	os.Unsetenv("WORKER")
 	os.Unsetenv("RETRY_LIMIT")
+	os.Unsetenv("DEFAULT_TIMEOUT")
 }
 
 
@@ -52,6 +58,10 @@ func TestReadConfigDefaultValue(t *testing.T) {
 	}
 
 	if config.RetryLimit != 10 {
+		t.Error("Read config error - unexpected worker value")
+	}
+
+	if config.DefaultTimeout != 10000 {
 		t.Error("Read config error - unexpected worker value")
 	}
 }

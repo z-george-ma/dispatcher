@@ -52,8 +52,7 @@ func timeLoop(scheduler *Scheduler) {
 }
 
 func jobLoop(scheduler *Scheduler) {
-	for true {
-		worker := <- scheduler.pool.Worker
+	for worker := range scheduler.pool.Worker {
 		data := getCurrent(scheduler)
 		for data == nil {
 			<-scheduler.dataReady
