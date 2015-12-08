@@ -48,22 +48,9 @@ Consider use of queues if you need to
 Dispatcher is a fully self-contained API hence can work independently when hosted behind a load balancer. With current implementation, you need to manually restart faulty Dispatcher node, or specify "--restart=true" if you are using docker container.
 
 -----
-### Examples
+### How to use it
 
-Assume Dispatcher is hosted on http://localhost/, the following command will tell Dispatcher to make a HTTP call to http://my-url/. If the call fails, Dispatcher will retry initially in 2 seconds, then 4 seconds, 8 seconds, 16 seconds, so on so forth.
-
-```
-$ curl http://localhost/ -XPOST -H "Content-Type: application/json" -d "
-{
-  \"Url\": \"http://my-url/\",
-  \"Method\": \"POST\",
-  \"Body\": \"{}\",
-  \"Header\": {
-    \"Content-Type\": \"application/json\"
-  },
-  \"Timeout\": 1000
-}"
-```
+You can send your request the same way you call the destination API, just replace the hostname with Dispatcher hostname. Dispatcher will proxy through the method, url path, header and body as is, just replacing the hostname with the one specified in X-Dispatcher-Origin-Host header field. Also the timeout can be specified in X-Dispatcher-Timeout header.
 
 -----
 ### Configuration

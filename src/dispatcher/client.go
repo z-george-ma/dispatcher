@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 	"net/http"
-	"strings"
+	"bytes"
 )
 
 func client(data *MessageRecord) error {
@@ -17,13 +17,16 @@ func client(data *MessageRecord) error {
 	var req *http.Request
 	var err error
 	
-	if req, err = http.NewRequest(data.Method, data.Url, strings.NewReader(data.Body)); err != nil {
+	if req, err = http.NewRequest(data.Method, data.Url, bytes.NewReader(data.Body)); err != nil {
 		log.Println("error", err)
 		return err
 	}
 	
+	
 	for key, value := range data.Header {
-		req.Header.Add(key, value)
+		for _, v := range value {
+			req.Header.Add(key, v)
+		}
 	}
 	
 	var resp *http.Response

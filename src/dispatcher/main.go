@@ -13,8 +13,8 @@ type MessageRecord struct {
 	RetryTimestamp int64
 	Url string
 	Method string
-	Header map[string]string
-	Body string
+	Header map[string] []string
+	Body []byte
 	Timeout int	
 	Error string
 }
