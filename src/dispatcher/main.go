@@ -8,7 +8,7 @@ import (
 )
 
 type MessageRecord struct {
-	UUID string
+	ID uint64
 	RetryCount int
 	RetryTimestamp int64
 	Url string
@@ -40,7 +40,7 @@ func main() {
 	var scheduler *Scheduler
 	scheduler = NewScheduler(pool, func (data *MessageRecord) bool {
 		if err := client(data); err == nil {
-			if err := transactionLog.WriteAck(data.UUID); err != nil {
+			if err := transactionLog.WriteAck(data.ID); err != nil {
 				log.Println("Failed to write to transaction log", err)
 			}
 			return true

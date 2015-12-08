@@ -55,7 +55,6 @@ Assume Dispatcher is hosted on http://localhost/, the following command will tel
 ```
 $ curl http://localhost/ -XPOST -H "Content-Type: application/json" -d "
 {
-  \"UUID\": \"2313a6a1-b522-4a32-81f8-58324925dea1\",
   \"Url\": \"http://my-url/\",
   \"Method\": \"POST\",
   \"Body\": \"{}\",

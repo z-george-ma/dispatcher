@@ -14,11 +14,12 @@ type TransactionLog struct {
 	deadletter *os.File
 	metadata []messageMetaData
 	head uint
+	maxID uint64 // NOTE: transaction log doesn't persist ID during recover
 	lock chan bool
 }
 
 type messageMetaData struct {
-	messageUUID string
+	messageID uint64
 	transLogPos uint
 }
 
@@ -59,16 +60,19 @@ func (tlog *TransactionLog) Write(data *MessageRecord) error {
 	b = append(b, buf5...)
 
 	<-tlog.lock
-	tlog.metadata = append(tlog.metadata, messageMetaData{data.UUID, tlog.head})
+	tlog.maxID++
+	data.ID = tlog.maxID
+
+	tlog.metadata = append(tlog.metadata, messageMetaData{data.ID, tlog.head})
 	_, err := tlog.file.Write(b)	
 	tlog.head++
 	tlog.lock <- true
 	return err
 }
 
-func indexOfMessageMetaData(slice []messageMetaData, messageUUID string) (int, messageMetaData) {
+func indexOfMessageMetaData(slice []messageMetaData, messageID uint64) (int, messageMetaData) {
 	for i, elm := range slice {
-		if elm.messageUUID == messageUUID {
+		if elm.messageID == messageID {
 			return i, elm
 		}
 	}
@@ -76,11 +80,11 @@ func indexOfMessageMetaData(slice []messageMetaData, messageUUID string) (int, m
 	return -1, messageMetaData{}
 }
 
-func (tlog *TransactionLog) WriteAck(UUID string) error {
+func (tlog *TransactionLog) WriteAck(ID uint64) error {
 	var err error
 	<-tlog.lock
 	
-	i, elm := indexOfMessageMetaData(tlog.metadata, UUID)
+	i, elm := indexOfMessageMetaData(tlog.metadata, ID)
 	
 	if i < 0 {
 		tlog.lock <- true
@@ -107,7 +111,7 @@ func (tlog *TransactionLog) WriteAck(UUID string) error {
 
 func (tlog *TransactionLog) WriteRetry(data *MessageRecord) error {
 	<-tlog.lock
-	i, elm := indexOfMessageMetaData(tlog.metadata, data.UUID)
+	i, elm := indexOfMessageMetaData(tlog.metadata, data.ID)
 	
 	if i < 0 {
 		tlog.lock <- true
@@ -124,7 +128,7 @@ func (tlog *TransactionLog) WriteRetry(data *MessageRecord) error {
 	b := buf.Bytes()
 
 	tlog.metadata = append(tlog.metadata[:i], tlog.metadata[i+1:]...)
-	tlog.metadata = append(tlog.metadata, messageMetaData{data.UUID, tlog.head})
+	tlog.metadata = append(tlog.metadata, messageMetaData{data.ID, tlog.head})
 	
 	b1 := make([]byte, 13)
 	binary.LittleEndian.PutUint32(b1[0:4], uint32(tlog.head - elm.transLogPos)) // messageOffset(4)
@@ -141,7 +145,7 @@ func (tlog *TransactionLog) WriteRetry(data *MessageRecord) error {
 }
 
 func (tlog *TransactionLog) WriteDeadLetter(data *MessageRecord) error {
-	log.Println("Sending message to dead letter queue. Message UUID:", data.UUID)
+	log.Println("Sending message to dead letter queue. Message ID:", data.ID)
 	
 	<-tlog.lock
 	
@@ -165,5 +169,5 @@ func (tlog *TransactionLog) WriteDeadLetter(data *MessageRecord) error {
 
 	tlog.lock <- true
 	
-	return tlog.WriteAck(data.UUID)
+	return tlog.WriteAck(data.ID)
 }

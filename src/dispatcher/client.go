@@ -9,7 +9,7 @@ import (
 )
 
 func client(data *MessageRecord) error {
-	log.Println("Processing message", data.UUID)
+	log.Println("Processing message", data.ID)
 	httpClient := &http.Client {
 		Timeout: time.Duration(data.Timeout) * time.Millisecond,
 	}
@@ -28,11 +28,11 @@ func client(data *MessageRecord) error {
 	
 	var resp *http.Response
 	if resp, err = httpClient.Do(req); err != nil {
-		log.Println("Error in message", data.UUID, err)
+		log.Println("Error in message", data.ID, err)
 		return err
 	}
 	
-	log.Printf("Message %s processed, status %d\n", data.UUID, resp.StatusCode)
+	log.Printf("Message %s processed, status %d\n", data.ID, resp.StatusCode)
 	resp.Body.Close()
 
 	return nil
