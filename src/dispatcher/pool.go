@@ -30,6 +30,13 @@ func startWorker(worker *worker_t, done chan worker_result_t) {
 	}
 }
 
+func getWorker(worker *worker_t) func(func(*MessageRecord) bool, *MessageRecord) {
+	return func(f func(*MessageRecord) bool, data *MessageRecord) { 
+		worker.data = data 
+		worker.f <- f 
+	}
+}
+
 func NewPool(maxPoolSize int) *Pool {
 	pool := Pool{
 		make(chan bool, 1),
@@ -40,18 +47,12 @@ func NewPool(maxPoolSize int) *Pool {
 	for i:=0; i < maxPoolSize; i++ {
 		worker := worker_t { nil, make(chan bool, 1), make(chan func(*MessageRecord) bool, 1)}
 		go startWorker(&worker, pool.sig_worker_result)
-		pool.Worker <- func(f func(*MessageRecord) bool, data *MessageRecord) { 
-			worker.data = data 
-			worker.f <- f 
-		}
+		pool.Worker <- getWorker(&worker)
 	}
 	
 	go func() {
 		for result := range pool.sig_worker_result {
-			pool.Worker <- func(f func(*MessageRecord) bool, data *MessageRecord) { 
-				result.worker.data = data 
-				result.worker.f <- f 
-			}
+			pool.Worker <- getWorker(result.worker)
 		}
 	}()
 	

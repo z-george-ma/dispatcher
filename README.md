@@ -62,6 +62,7 @@ Dispatcher reads configuration from environment variables. Currently it supports
 - WORKER: number of worker threads for Dispatcher. Default: 10
 - RETRYLIMIT: The number of retries before the message goes to dead letter queue. Default: 10
 - DEFAULT_TIMEOUT: Default timeout for HTTP call if the timeout is not set in the message. Default: 10000
+- EVENT_SOURCING: Event sourcing mode, i.e. appending to transaction logs without cleaning the file on restart. Default: false
 
 -----
 ### Installation:

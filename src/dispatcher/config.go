@@ -13,6 +13,7 @@ type Config struct {
 	Worker int
 	RetryLimit int
 	DefaultTimeout int
+	EventSourcing bool
 }
 
 func getEnvOrDefault(name string, defaultValue string) string {
@@ -33,15 +34,30 @@ func getEnvOrDefaultInt(name string, defaultValue int) int {
 		return defaultValue
 	}
 	
-	intV, err := strconv.Atoi(strValue)
+	value, err := strconv.Atoi(strValue)
 	
 	if err != nil {
 		return defaultValue
 	}
 	
-	return intV
+	return value
 }
 
+func getEnvOrDefaultBool(name string, defaultValue bool) bool {
+	strValue := os.Getenv(name)
+	
+	if strValue == "" {
+		return defaultValue
+	}
+	
+	value, err := strconv.ParseBool(strValue)
+	
+	if err != nil {
+		return defaultValue
+	}
+	
+	return value
+}
 
 
 func readConfig() Config {
@@ -52,5 +68,6 @@ func readConfig() Config {
 		Worker: getEnvOrDefaultInt("WORKER", 10),
 		RetryLimit: getEnvOrDefaultInt("RETRY_LIMIT", 10),
 		DefaultTimeout: getEnvOrDefaultInt("DEFAULT_TIMEOUT", 10000),
+		EventSourcing: getEnvOrDefaultBool("EVENT_SOURCING", false),
 	}
 }

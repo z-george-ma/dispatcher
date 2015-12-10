@@ -11,6 +11,7 @@ func TestReadConfigFromEnv(t *testing.T) {
 	os.Setenv("WORKER", "111")
 	os.Setenv("RETRY_LIMIT", "222")
 	os.Setenv("DEFAULT_TIMEOUT", "333")
+	os.Setenv("EVENT_SOURCING", "true")
 	
 	config := readConfig()
 	
@@ -31,6 +32,10 @@ func TestReadConfigFromEnv(t *testing.T) {
 	}
 	
 	if config.DefaultTimeout != 333 {
+		t.Error("Read config error - unexpected worker value")
+	}
+	
+	if config.EventSourcing != true {
 		t.Error("Read config error - unexpected worker value")
 	}
 	
@@ -62,6 +67,10 @@ func TestReadConfigDefaultValue(t *testing.T) {
 	}
 
 	if config.DefaultTimeout != 10000 {
+		t.Error("Read config error - unexpected worker value")
+	}
+
+	if !config.EventSourcing {
 		t.Error("Read config error - unexpected worker value")
 	}
 }

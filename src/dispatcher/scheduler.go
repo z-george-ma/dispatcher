@@ -8,6 +8,7 @@ import (
 type Scheduler struct {
 	current []*MessageRecord
 	deferred []*MessageRecord
+	start chan bool
 	currentLock chan bool
 	deferredLock chan bool
 	dataReady chan bool
@@ -17,6 +18,7 @@ type Scheduler struct {
 
 func NewScheduler(pool *Pool, process func(*MessageRecord) bool) *Scheduler {
 	scheduler := Scheduler{
+		start: make(chan bool, 1),
 		currentLock: make(chan bool, 1),
 		deferredLock: make(chan bool, 1),
 		dataReady: make(chan bool, 1),
@@ -47,11 +49,12 @@ func timeLoop(scheduler *Scheduler) {
 		if (len(msgs) > 0) {
 			addToCurrentBatch(scheduler, msgs)
 			signalDataReady(scheduler)
-		}				
+		}
 	}
 }
 
 func jobLoop(scheduler *Scheduler) {
+	<-scheduler.start
 	for worker := range scheduler.pool.Worker {
 		data := getCurrent(scheduler)
 		for data == nil {
@@ -76,9 +79,15 @@ func addToCurrentBatch(scheduler *Scheduler, records []*MessageRecord) {
 
 func getCurrent(scheduler *Scheduler) *MessageRecord {
 	<-scheduler.currentLock
-	if len(scheduler.current) > 0 {
+	l := len(scheduler.current)
+	if l > 0 {
 		ret := scheduler.current[0]
-		scheduler.current, scheduler.current[len(scheduler.current) - 1] = scheduler.current[1:], nil
+		if l > 1 {
+			copy(scheduler.current[0:], scheduler.current[1:])
+		}
+		scheduler.current[l - 1] = nil
+		scheduler.current = scheduler.current[:l - 1]
+		
 		scheduler.currentLock <- true
 		return ret
 	}
@@ -96,22 +105,28 @@ func addToDeferred(scheduler *Scheduler, record *MessageRecord) {
 func getDeferred(scheduler *Scheduler) []*MessageRecord {
 	now := time.Now().Unix()
 	<-scheduler.deferredLock
-	newDeferred := make([]*MessageRecord, 0, len(scheduler.deferred))
+	newDeferred := scheduler.deferred[:0]
 	ret := make([]*MessageRecord, 0, len(scheduler.deferred))
 	
-	for i, msg := range scheduler.deferred {
+	for _, msg := range scheduler.deferred {
 		if msg.RetryTimestamp <= now {
 			ret = append(ret, msg)
-			scheduler.deferred[i] = nil
 		} else {
 			newDeferred = append(newDeferred, msg)
-			scheduler.deferred[i] = nil
 		}
+	}
+	
+	for i := len(newDeferred); i < len(scheduler.deferred); i++ {
+		scheduler.deferred[i] = nil
 	}
 	
 	scheduler.deferred = newDeferred
 	scheduler.deferredLock <- true
 	return ret
+}
+
+func (scheduler *Scheduler) Start() {
+	scheduler.start <- true
 }
 
 func (scheduler *Scheduler) Write(record *MessageRecord) {

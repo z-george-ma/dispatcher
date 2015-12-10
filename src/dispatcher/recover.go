@@ -13,6 +13,11 @@ func bytesToInt(b []byte) int {
 	return int(b[0]) + int(b[1])<<8 + int(b[2])<<16 + int(b[3])<<24
 }
 
+
+func bytesToUInt64(b []byte) uint64 {
+	return uint64(b[0]) + uint64(b[1])<<8 + uint64(b[2])<<16 + uint64(b[3])<<24 + uint64(b[4])<<32 + uint64(b[5])<<40 + uint64(b[6])<<48 + uint64(b[7])<<56
+}
+
 func indexOf(slice []int, pos int) int {
 	for i, elm := range slice {
 		if elm == pos {
@@ -23,13 +28,27 @@ func indexOf(slice []int, pos int) int {
 	return -1
 }
 
-func recover(file string, process func(*MessageRecord) error) error {
-	f, err := os.OpenFile(file, os.O_RDONLY, 500)
-	if os.IsNotExist(err) {
-		return nil
+func getMessageId(f *os.File) (uint64, error) {	
+	if pos, err := f.Seek(0, 2); err != nil || pos == 0 {
+		return 0, err
 	}
 	
+	if _, err := f.Seek(-13, 1); err != nil {
+		return 0, err
+	}
+
+	b := make([]byte, 13)
+	if _, err := f.Read(b); err != nil && err != io.EOF {
+		return 0, err
+	}
+	
+	return bytesToUInt64(b), nil
+}
+
+func recover(f *os.File, process func(*MessageRecord) error) error {
 	var pos int64
+	var err error
+	
 	if pos, err = f.Seek(0, 2); err != nil {
 		log.Println("Unable to read the record", err)
 		return nil
@@ -40,12 +59,11 @@ func recover(file string, process func(*MessageRecord) error) error {
 	var ackOffsets []int
 
 	log.Println("Start recovery...")
-	for (pos > 0 && (msgReadCount < maxReadMsgCount || maxReadMsgCount < 0)) {
+	for pos > 0 && (msgReadCount < maxReadMsgCount || maxReadMsgCount < 0) {
 		msgReadCount++
-		log.Println("Recovering message", msgReadCount)
-		b := make([]byte, 5)
+		b := make([]byte, 13)
 				
-		if pos, err = f.Seek(-5, 1); err != nil {
+		if pos, err = f.Seek(-13, 1); err != nil {
 			return err
 		}		
 
@@ -53,17 +71,21 @@ func recover(file string, process func(*MessageRecord) error) error {
 			return err
 		}
 
-		msgLen := bytesToInt(b[1:])
-		switch b[0] {
+		msgId := bytesToUInt64(b)
+		msgLen := bytesToInt(b[9:])
+		
+		switch b[8] {
 		case 1:
 			if i := indexOf(ackOffsets, msgReadCount); i >= 0 {
 				ackOffsets = append(ackOffsets[:i], ackOffsets[i+1:]...)
 				
-				if _, err = f.Seek(int64(-5-msgLen), 1); err != nil {
+				if _, err = f.Seek(-13, 1); err != nil {
 					return err
 				}
+				
+				log.Printf("%d: IGNORE %d, ACKED\n", msgReadCount, msgId)
 			} else {
-				if _, err = f.Seek(int64(-5-msgLen), 1); err != nil {
+				if _, err = f.Seek(int64(-13-msgLen), 1); err != nil {
 					return err
 				}
 				
@@ -83,13 +105,12 @@ func recover(file string, process func(*MessageRecord) error) error {
 						return err
 					}
 				}
-				
-				if _, err = f.Seek(int64(-msgLen), 1); err != nil {
-					return err
-				}
-			}			
+
+				log.Printf("%d: REPLAY %d\n", msgReadCount, msgId)
+			}
+						
 		case 2:
-			if _, err = f.Seek(int64(-5-msgLen), 1); err != nil {
+			if _, err = f.Seek(int64(-13-msgLen), 1); err != nil {
 				return err
 			}
 			
@@ -106,19 +127,19 @@ func recover(file string, process func(*MessageRecord) error) error {
 				maxReadMsgCount = msgReadCount + unAckedMsgOffset
 			}
 						
-			if _, err = f.Seek(int64(-msgLen), 1); err != nil {
-				return err
-			}
+			log.Printf("%d: ACK %d\n", msgReadCount, msgId)
 		
 		case 3:
 			if i := indexOf(ackOffsets, msgReadCount); i >= 0 {
 				ackOffsets = append(ackOffsets[:i], ackOffsets[i+1:]...)
-				
-				if _, err = f.Seek(int64(-5-msgLen), 1); err != nil {
+
+				if _, err = f.Seek(int64(-13), 1); err != nil {
 					return err
 				}
-			} else {
-				if _, err = f.Seek(int64(-5-msgLen), 1); err != nil {
+				
+				log.Printf("%d: IGNORE %d, ACKED RETRIED\n", msgReadCount, msgId)
+			} else {				
+				if _, err = f.Seek(int64(-13-msgLen), 1); err != nil {
 					return err
 				}
 				
@@ -129,7 +150,7 @@ func recover(file string, process func(*MessageRecord) error) error {
 				}
 				
 				c := b[msgLen - 8:]
-				
+
 				msgOffset := bytesToInt(c)
 				unAckedMsgOffset := bytesToInt(c[4:])
 				
@@ -153,22 +174,13 @@ func recover(file string, process func(*MessageRecord) error) error {
 					ackOffsets = append(ackOffsets, msgReadCount + msgOffset)
 				}
 				
-				if _, err = f.Seek(int64(-msgLen), 1); err != nil {
-					return err
-				}	
+				log.Printf("%d: REPLAY %d, RETRIED\n", msgReadCount, msgId)
 			}
 		}
-		
-		if pos, err = f.Seek(0, 1); err != nil {
+
+		if pos, err = f.Seek(int64(-msgLen), 1); err != nil {
 			return err
 		}
-	}
-
-	if err = f.Close(); err != nil {
-		return err
-	}
-	if err = os.Remove(file); err != nil {
-		return err
 	}
 	
 	log.Println("Recovery completed.")
